@@ -14,10 +14,23 @@ CORS(app)
 def hello():
     return "Hello, are you trying to hack this ? pls don't"
 
-@app.route('/get-locations', methods=['GET'])
-def get_locations():
+@app.route('/get-all-sublocations', methods=['GET'])
+def get_all_sublocations():
     try:
-        list_location = db.get_locations()
+        sublocation_list = db.get_all_sublocations()
+        return jsonify({
+            'data': sublocation_list,
+            'message': 'success'
+        }), 200
+    except:
+        return jsonify({
+            'message': 'server error'
+        }), 500
+
+@app.route('/get-crowd-density-information', methods=['GET'])
+def get_crowd_density_information():
+    try:
+        list_location = db.get_crowd_density_information()
         return jsonify({
             'data': list_location,
             'message': 'success'
@@ -27,10 +40,10 @@ def get_locations():
             'message': 'server error'
         }), 500
 
-@app.route('/get-location-names', methods=['GET'])
-def get_location_names():
+@app.route('/get-suggested-locations', methods=['GET'])
+def get_suggested_locations():
     try:
-        nameslist = db.get_location_names()
+        nameslist = db.get_suggested_locations()
         return jsonify({
             'data': nameslist,
             'message': 'success'
@@ -40,11 +53,27 @@ def get_location_names():
             'message': 'server error'
         }), 500
 
+@app.route('/suggest-location', methods=['POST'])
+def suggest_location():
+    data = request.json
+    location_name = data['location_name']
+    sublocation_names = data['sublocation_names']
+    query_result = db.suggest_location(location_name, sublocation_names)
+    message = query_result['message']
+    returning_data = query_result['data']
+    if message == 'success':
+        return jsonify(query_result), 200
+    else:
+        return jsonify({
+            'message': message,
+        }), 500
+
 @app.route('/add-location', methods=['POST'])
 def add_location():
     data = request.json
-    name = data['location_name']
-    query_result = db.add_location(name)
+    location_name = data['location_name']
+    sublocation_names = data['sublocation_names']
+    query_result = db.add_location(location_name, sublocation_names)
     message = query_result['message']
     returning_data = query_result['data']
     if message == 'success':
@@ -58,8 +87,8 @@ def add_location():
 def add_sublocation():
     data = request.json
     name = data['sublocation_name']
-    id_location = data['id_location']
-    query_result = db.add_sublocation(id_location, name)
+    location_id = data['location_id']
+    query_result = db.add_sublocation(location_id, name)
     message = query_result['message']
     returning_data = query_result['data']
     if message == 'success':

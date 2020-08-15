@@ -53,14 +53,80 @@ def execute_post(query, val):
             'message': 'failed'
         }
 
-def add_location(name):
-    query = "insert into location(name) values (%s) returning id"
-    value = (name, )
-    return execute_post(query, value)
+def get_all_sublocations():
+    query = """
+            select location.id, location.name, sublocation.name, sublocation.status
+            from location join sublocation
+            on location.id = sublocation.location_id
+            """
+    lst = execute_get(query)
+    result = {}
+    for item in lst:
+        if item[1] not in result.keys():
+            result[item[1]] = {}
+            result[item[1]]['id'] = item[0]
+            result[item[1]]['sublocations'] = [{
+                'sublocation_name': item[2],
+                'sublocation_status': item[3]
+            }]
+        else:
+            result[item[1]]['sublocations'].append({
+                'sublocation_name': item[2],
+                'sublocation_status': item[3]
+            })
+    return result
 
-def add_sublocation(id_location, name):
-    query = "insert into sublocation(id_location, name) values (%s, %s) returning id"
-    value = (id_location, name)
+def suggest_location(location_name, sublocation_names):
+    try:
+        sublocation_names_list = [name.lstrip(" ").title() for name in sublocation_names.split(',')]
+        # create new location, returning location_id
+        query = "insert into location(name) values (%s) returning id"
+        value = (location_name, )
+        result_location = execute_post(query, value)
+        location_id = result_location['data']['returning_id']
+        # use that location_id to create sublocations 
+        query = "insert into sublocation(location_id, name, status) values (%s, %s, %s) returning id"
+        for sublocation_name in sublocation_names_list:
+            value = (location_id, sublocation_name, 'suggested')
+            sublocation_id = execute_post(query, value)
+        return {
+            'message': 'success',
+            'data': {
+                'location_id': location_id
+            }
+        }
+    except Exception as e:
+        return {
+            'message': 'failed',
+        }
+
+def add_location(location_name, sublocation_names):
+    try:
+        sublocation_names_list = [name.lstrip(" ").title() for name in sublocation_names.split(',')]
+        # create new location, returning location_id
+        query = "insert into location(name) values (%s) returning id"
+        value = (location_name, )
+        result_location = execute_post(query, value)
+        location_id = result_location['data']['returning_id']
+        # use that location_id to create sublocations 
+        query = "insert into sublocation(location_id, name, status) values (%s, %s, %s) returning id"
+        for sublocation_name in sublocation_names_list:
+            value = (location_id, sublocation_name, 'inactive')
+            sublocation_id = execute_post(query, value)
+        return {
+            'message': 'success',
+            'data': {
+                'location_id': location_id
+            }
+        }
+    except Exception as e:
+        return {
+            'message': 'failed',
+        }
+
+def add_sublocation(location_id, name):
+    query = "insert into sublocation(location_id, name) values (%s, %s) returning id"
+    value = (location_id, name)
     return execute_post(query, value)
 
 def add_crowd_data(sublocation_id, is_crowded, created_at):
@@ -68,23 +134,37 @@ def add_crowd_data(sublocation_id, is_crowded, created_at):
     value = (sublocation_id, is_crowded, created_at)
     return execute_post(query, value)
 
-def get_location_names():
-    query = "select id, name, is_active from location"
+def get_suggested_locations():
+    # query = "select id, name, is_active from location"
+    query = """
+            select location.id, location.name, location.is_active, sublocation.name, sublocation.status
+            from location join sublocation
+            on location.id=sublocation.location_id 
+            where location.is_active=false
+            """
     lst = execute_get(query)
-    result = []
+    result = {}
     for item in lst:
-        result.append({
-            'id': item[0],
-            'name': item[1],
-            'is_active': item[2]
-        })
+        if item[1] not in result.keys():
+            result[item[1]] = {}
+            result[item[1]]['id'] = item[0]
+            result[item[1]]['is_active'] = item[2]
+            result[item[1]]['sublocations'] = [{
+                'sublocation_name': item[3],
+                'sublocation_status': item[4]
+            }]
+        else:
+            result[item[1]]['sublocations'].append({
+                'sublocation_name': item[3],
+                'sublocation_status': item[4]
+            })
     return result
 
-def get_locations():
+def get_crowd_density_information():
     query = """
-            select location.id, location.name, sublocation.name, crowd_density.is_crowded, crowd_density.created_at
+            select location.id, location.name, sublocation.name, crowd_density.is_crowded, crowd_density.created_at, sublocation.status
             from (location join sublocation
-            on location.id = sublocation.id_location) join crowd_density
+            on location.id = sublocation.location_id) join crowd_density
             on sublocation.id = crowd_density.sublocation_id
             """
     lst = execute_get(query)
@@ -97,12 +177,14 @@ def get_locations():
                 'sublocation_name': item[2],
                 'is_crowded': item[3],
                 'created_at': item[4],
+                'status': item[5]
             }]
         else:
             result[item[1]]['sublocations'].append({
                 'sublocation_name': item[2],
                 'is_crowded': item[3],
                 'created_at': item[4],
+                'status': item[5]
             })
 
     return result
