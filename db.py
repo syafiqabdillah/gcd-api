@@ -48,7 +48,6 @@ def execute_post(query, val):
             }
         }
     except Exception as e:
-        print(str(e))
         return {
             'message': 'failed'
         }
