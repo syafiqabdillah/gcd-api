@@ -159,13 +159,46 @@ def get_suggested_locations():
             })
     return result
 
+def get_crowd_density_information_NEW():
+    query = """ 
+            select distinct on (sublocation.id)
+            sublocation.id as sublocation_id, sublocation.name as sublocation_name, sublocation.status,
+            location.id as location_id, location.name as location_name, crowd_density.created_at, crowd_density.is_crowded
+            from location join sublocation on location.id = sublocation.location_id
+            join crowd_density on sublocation.id = crowd_density.sublocation_id
+            order by sublocation_id, sublocation_name, sublocation.status, location_id, location_name, crowd_density.created_at desc, crowd_density.is_crowded;
+            """
+    lst = execute_get(query)
+    result = {} # list of dict of sublocation
+    for item in lst:
+        if item[4] not in result.keys(): # belum ada 
+            result[item[4]] = {}
+            result[item[4]]['id'] = item[3]
+            result[item[4]]['sublocations'] = [{
+                'sublocation_name': item[1],
+                'is_crowded': item[6],
+                'created_at': item[5],
+                'status': item[2]
+            }]
+        else:
+            result[item[4]]['sublocations'].append({
+                'sublocation_name': item[1],
+                'is_crowded': item[6],
+                'created_at': item[5],
+                'status': item[2]
+            })
+
+    return result
+
 def get_crowd_density_information():
     query = """
-            select location.id, location.name, sublocation.name, crowd_density.is_crowded, crowd_density.created_at, sublocation.status
+            select distinct on (sublocation.id)
+            location.id, location.name, sublocation.name, crowd_density.is_crowded, crowd_density.created_at, sublocation.status, sublocation.id
             from (location join sublocation
             on location.id = sublocation.location_id) join crowd_density
             on sublocation.id = crowd_density.sublocation_id
             """
+            
     lst = execute_get(query)
     result = {} # list of dict of sublocation
     for item in lst:

@@ -30,7 +30,7 @@ def get_all_sublocations():
 @app.route('/get-crowd-density-information', methods=['GET'])
 def get_crowd_density_information():
     try:
-        list_location = db.get_crowd_density_information()
+        list_location = db.get_crowd_density_information_NEW()
         return jsonify({
             'data': list_location,
             'message': 'success'
